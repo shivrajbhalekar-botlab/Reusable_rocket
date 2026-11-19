@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 MU = 3.986004418e14   # Earth's gravity strength [m^3/s^2]
 RE = 6371e3           # Earth's radius [m]
 
-RHO0 = 0          # air density at sea level [kg/m^3]
+RHO0 = 1.225          # air density at sea level [kg/m^3]
 H = 8500.0            # scale height [m]
 
 

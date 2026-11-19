@@ -18,8 +18,8 @@ The goal is understanding, not just working code. The user wants to be taught
 | # | Big step | Status |
 |---|---|---|
 | 1 | Make an object orbit Earth (simulation setup) | ✅ **Done** |
-| 2 | Make it fall back and land: air drag + deorbit burn → reentry | 🔄 **In progress** (at 2.1) |
-| 3 | Replace the object with a rocket: mass, engine, thrust, fly up | ⏳ |
+| 2 | Make it fall back and land: air drag + deorbit burn → reentry | ✅ **Done** (2.1–2.7, README written) |
+| 3 | Replace the object with a rocket: mass, engine, thrust, fly up | 🔄 **In progress** (at 3.1) |
 | 4 | Countdown (timer + checks) and stage separation (split into two objects) | ⏳ |
 | 5 | Bring the booster back: boostback, descent, G-FOLD landing burn | ⏳ |
 | 6 | Make it look good: 3D viewer, plots, Monte Carlo runs | ⏳ |
@@ -97,7 +97,7 @@ A new session must behave exactly like this.
   ```
 - User confirmed the env works (`step1_1_gravity.py` printed `gravity = 9.82 m/s^2`).
 - VS Code interpreter should be set to **rocket (conda)**.
-- Not a git repository (no version control yet — could suggest `git init` at a natural break).
+- The project is now a **git repository** (the user ran `git init` themselves on 2026-11-19).
 - Earlier a `.venv/` and `requirements.txt` were created in the root by mistake (user preferred conda).
   The user was told to delete them with `rm -rf .venv requirements.txt` — **not confirmed** whether they did.
 
@@ -180,7 +180,8 @@ matplotlib basics, `np.linspace`, `scipy.integrate.solve_ivp`, numpy row/column 
 | 2.3 | Throw sideways WITH air: drag as a 2D vector opposite to velocity (flat ground, constant rho) | ✅ done |
 | 2.4 | Add drag to the orbit (own Euler loop, `air_density(r - RE)`, start 180 km) | ✅ done (user tested RHO0 = 0 → saw ±0.4 km Euler wobble, explained) |
 | 2.5 | Deorbit burn: instant retrograde dv = 100 m/s at 400 km → perigee ~58 km → captured by air | 🔄 **file given, waiting for user** |
-| 2.6 | Reentry all the way to landing, with plots | ⏳ |
+| 2.6 | G-force during reentry (`step2_6_g_force.py`: braking = drag/m / G0; speed & g vs altitude) | ✅ done (m=1: 7.5 g @ 62 km; m=4: 7.5 g @ 50 km) |
+| 2.7 | Switch reentry to `solve_ivp` + `events` (stop at ground, no Euler wobble); then write `step2_reentry/README.md` | 🔄 **file given, waiting for user** |
 
 (Step 2 was re-split on 2026-11-18: old 2.3/2.4/2.5 became 2.4/2.5/2.6.)
 
@@ -240,8 +241,75 @@ Expected (rough): `orbit speed = 7672.6, after burn = 7572.6`; lands after rough
 on the far side of Earth. Plot: altitude vs time (minutes); prints lowest altitude.
 Experiments: dv = 20 → perigee ≈ 330 km → no air → "still flying after 180 min", lowest ≈ 330 km.
 Bonus: RHO0 = 0 with dv = 100 → never lands, lowest ≈ 58 km (the burn alone doesn't land you; the air does).
-In a new session: ask for their numbers; on "next" start Step 2.6 (switch to solve_ivp + events,
-reentry plots: speed vs altitude, deceleration in g's).
+**2.5 needed a lot of re-explaining (the user found it hard). What finally worked, in order:**
+- Plain goal first: "bring the ball home; no air at 400 km; air only low down; how do we get it into the air cheaply?"
+- Run A (`RHO0 = 0`, dv = 100): user saw the 400 ↔ 58 km wave themselves (lowest = 58 km matched hand calc).
+- "Why does it climb back up?": falling speeds it up → overshoot like a **swing** / a braking car
+  (fall > drop 400→~225 km builds down speed; fall < drop 225→58 km brakes it; at 58 km down speed = 0, then climbs).
+- `step2_5b_down_and_sideways.py`: splits velocity into down (radial, `away = vx*x/r + vy*y/r`) and sideways
+  (`sqrt(speed² − away²)`), plots both + orbit speed needed (`plt.subplot`). Down speed peaks ~200 m/s;
+  sideways 7573 → 7975 → 7573 (skater rule: sideways speed × r = const = 51.27 million).
+- Important correction: in code, `vx`/`vy` are fixed screen axes, NOT sideways/down (those rotate around Earth).
+- "Must sideways = orbit speed to stay in orbit?" → equal + zero down speed = circle; a little off = oval (still orbit);
+  far off = crash/escape. The 3-case version (Step 1.6 circle / 2.5 plot oval / 7000 crash) landed best.
+- **What finally answered "what increases sideways speed if gravity is ⟂ to sideways?":** the user was right that gravity is
+  always ⟂ to sideways. Gravity only creates DOWN speed; as the ball moves around Earth, "down" rotates, so the old
+  down-velocity arrow becomes sideways a quarter-turn later (diagram: ↓ at the top = sideways on the right side).
+  The "bicycle downhill / gravity partly along the motion" explanation CONFUSED them — avoid it.
+- User said "ohk then what next" → they still need to do **Run B** (`RHO0 = 1.225`, dv = 100) to see the air catch the ball.
+User then asked "terminal speed differs per shape?" → yes; v_t = √(2mg/(ρCdA)); examples: ball 33, m=4 → 66,
+flat plate 21, 2× radius 16.5, ball at 10 km ≈ 59 m/s; raindrop ~9, skydiver ~55, parachute ~5.
+User said "next" WITHOUT reporting Run B numbers.
+
+**Step 2.6 file `step2_reentry/step2_6_g_force.py` given** (same loop as 2.5 Run B; `G0 = 9.81`; records altitude,
+speed, braking g = drag/m/G0; `max()`, `list.index()`; `plt.subplot(1, 2, n)`; altitude on the vertical axis).
+Expected — NOT computable exactly by hand, told the user so: peak roughly ~8 g (shallow ballistic entry, like
+Soyuz/Vostok ballistic mode), at roughly 60–70 km; speed plot shows speed rising 7573 → ~7900 while sinking
+(the "swing"), then a sharp drop. Experiment: m = 4 → peak g about the SAME, but ~12 km lower (H·ln4)
+— Allen–Eggers: peak g doesn't depend on mass/shape, only where it happens does.
+**User ran 2.6 (plots shared):** m = 1 → peak ≈ 7.5 g at ≈ 62 km; m = 4 → peak ≈ 7.5 g at ≈ 50 km (12 km lower) — both
+predictions confirmed. Explained the 3 zones (coast/swing 0 g → braking spike, ρ-vs-v² tug-of-war → terminal speed).
+CORRECTION made to the user: near the ground the braking is **1 g, not 0** (terminal speed: drag = weight).
+The user may have left `m = 4.0` in step2_6_g_force.py (told to restore 1.0).
+Also explained: same Cd ≠ same terminal speed (m=1 → 33, m=4 → 66 m/s); what IS universal is 1 g at terminal speed;
+same object → same landing speed whether dropped from 1 km or from orbit. Suggested adding
+`print("landing speed =", round(speeds[-1]), "m/s")` to 2.6.
+
+**Step 2.7 file `step2_reentry/step2_7_reentry_solve_ivp.py` given:** `dynamics` with gravity + drag; event function
+`hit_ground` returns altitude, `.terminal = True`, `.direction = -1`; DOP853 rtol 1e-10, atol 1e-6,
+`t_eval = np.arange(0, 3 h, 1 s)`, `events=hit_ground`; results from `sol.t_events[0][0]`, `sol.y_events[0][0]`;
+g-force recomputed in a `for k in range(len(sol.t))` loop with `sol.y[:, k]`; same 2-panel plot as 2.6.
+Expected: should closely match 2.6 (≈ 7.5 g at ≈ 62 km, landing ≈ 33 m/s); nfev unknown.
+Experiment given: dv = 200 (steeper entry; perigee would be ~260 km underground) → peak g goes UP clearly
+(exact value not hand-computed), confirming "peak g depends on entry angle". DON'T suggest removing
+`.terminal` (below ground the density formula explodes → stiff, may hang) or a dv too small to land
+(`sol.t_events[0][0]` → IndexError).
+User said "done next" without numbers. **Step 2 is complete**; `step2_reentry/README.md` written (files, formulas,
+10 ideas, events, honest limitations, Python learned).
+
+---
+
+## 6b. Step 3 (rocket) — where we are
+
+Folder: `step3_rocket/`. Plan:
+
+| Mini-step | Idea | Status |
+|---|---|---|
+| 3.1 | **Thrust**: constant force up, constant mass, 1D, flat, constant g; thrust-to-weight | 🔄 **file given, waiting for user** |
+| 3.2 | Burning fuel: mass decreases (ṁ), acceleration grows as it lightens; engine cuts off when fuel is gone | ⏳ |
+| 3.3 | Where thrust comes from: thrust = ṁ × exhaust speed (Isp) | ⏳ |
+| 3.4 | Rocket equation Δv = vₑ·ln(m₀/m_f), checked against the sim | ⏳ |
+| 3.5 | Fly straight up through air (drag + air_density) until burnout → max altitude | ⏳ |
+| 3.6 | Tilt over toward orbit (2D, round Earth, gravity turn) | ⏳ |
+| 3.7 | Reach orbit (solve_ivp) | ⏳ |
+
+**3.1 file `step3_rocket/step3_1_thrust.py`:** m = 1000 kg, thrust = 15000 N, g = 9.82, dt = 0.01,
+`for i in range(round(burn_time / dt))` (avoids float drift of a `while t < 10`), `a = (thrust - weight) / m`.
+Hand-computed (exact for this scheme): weight = 9820 N; a = 5.18 m/s²; after 10 s: v = 51.8 m/s,
+h = a·dt²·n(n+1)/2 = 259.3 m (exact physics: 259.0). Thrust-to-weight = 1.53 (Falcon 9 ≈ 1.4, Saturn V ≈ 1.2).
+Experiment: thrust = 9820 → a = 0, sits on the pad (h = 0, v = 0) — hover; T/W must be > 1 to lift off.
+Don't suggest thrust < weight: the code has no ground, so it would sink below the pad.
+In a new session: get their numbers; on "next" do 3.2.
 
 ---
 
