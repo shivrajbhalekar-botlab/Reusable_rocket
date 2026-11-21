@@ -330,9 +330,11 @@ Folder: `step3_rocket/`. Plan:
 | 3.5d | Max Q: dynamic pressure q = ½ρv² (`step3_5d_max_q.py`) | ✅ done (user ran ve×2 experiment) |
 | 3.5e | Speed of sound + Mach number (`step3_5e_mach.py`; `speed_of_sound(T)` added to `atmosphere.py`) | ✅ done (plot explained) |
 | 3.5f | Cd vs Mach drag curve with `np.interp` (`step3_5f_cd_mach.py`) | ✅ done |
-| 3.5g | Thrust vs altitude: thrust = thrust_vac − P·Ae (`step3_5g_thrust_altitude.py`) | 🔄 **file given, waiting for user** |
-| 3.5h | Real rocket numbers | ⏳ |
-| 3.6 | Tilt over toward orbit (2D, round Earth, gravity turn) | ⏳ |
+| 3.5g | Thrust vs altitude: thrust = thrust_vac − P·Ae (`step3_5g_thrust_altitude.py`) | ✅ done (accepted as a rule) |
+| 3.5h | Real rocket numbers: Falcon 9-like first stage straight up (`step3_5h_real_rocket.py`) | ✅ done (Isp re-explained) |
+| 3.6a | Same F9 flight on the ROUND Earth: x, y, vx, vy; g = MU/r² (`step3_6a_round_earth.py`) | ✅ done |
+| 3.6b | Tilt: thrust leans a fixed 5° from vertical after 10 s (`step3_6b_tilt.py`) | 🔄 **file given, waiting for user** |
+| 3.6c | Gravity turn: thrust follows the velocity; plot the path around Earth | ⏳ |
 | 3.7 | Reach orbit (solve_ivp) | ⏳ |
 
 **3.1 file `step3_rocket/step3_1_thrust.py`:** m = 1000 kg, thrust = 15000 N, g = 9.82, dt = 0.01,
@@ -541,6 +543,73 @@ Experiment: `exit_radius = 0.10` (Ae 0.0314, keep thrust_vac) → liftoff thrust
 Raptor vs RVac). Note told: real bigger nozzle also raises vacuum thrust; we keep it fixed to isolate the
 penalty. DON'T suggest nozzles so big that thrust < weight at liftoff: no ground in code → h < 0 → `us_standard_atmosphere`
 finds no layer → UnboundLocalError.
+User selected `radius = 0.25` / `A = math.pi * radius**2` in 3.5g: "I did not understand this sub-step" → likely confused by
+TWO areas now. Explained: A = front circle of the rocket BODY (50 cm wide, 0.196 m²) → used ONLY in drag (air hits the front);
+Ae = nozzle opening at the back (14 cm wide, 0.0154 m², ~13× smaller) → used ONLY in thrust (air pushes on the opening);
+circle area = π·r² (r = half the width), with worked numbers; side-view + front/back-view ASCII diagram.
+User pasted the 3.5g "big idea" (nozzle push-back diagram + straw-under-water analogy + table): "did not understand".
+Re-explained with the CORRECT simple physics (no straw analogy): air presses on every surface (~10 t per m² at sea level);
+top/nose pushed DOWN, bottom pushed UP → normally cancel; but the bottom has a HOLE (nozzle opening) where air has nothing
+to push on → bottom gets less upward push → net leftover push DOWN = P × Ae. Tiny numbers: 10 squares on top, 9 squares +
+1 hole on the bottom, 1 N per square → 10 down, 9 up → 1 N lost. In space P = 0 → nothing lost. Sea level: 101,325 × 0.0154
+= 1560 N lost (engine 16,560 → 15,000).
+User: "no I did not understand this" (2nd failure). 3rd attempt: dropped pressure physics entirely → "accept the rule" +
+one everyday analogy (running out of a door into an empty street vs a crowded street; the crowd pushes back at the door;
+wider door = more people pushing) + the 2 numbers (15.0 kN ground, 16.56 kN space, ~10%) + "run it and watch the thrust plot
+rise". Told them it's a small (~10%) correction and fine to accept for now. If still unclear: ASK which word/idea blocks them.
+User: "next" → **3.5g done.**
+**User later ran 3.5g and pasted the output (2026-11-19):** liftoff 15.0 kN; engine off 16.55 kN; burnout t = 80 s, 34.8 km, 1482 m/s;
+top 145.1 km at 230 s. Checked: no-air coast 34.8 + 1482²/(2·9.82) = 146.6 km, 231 s → coast drag cost only ~1.5 km. My rough guess
+(~125–145 km) was at the low side. The output also showed matplotlib loaded from `/home/shivraj/venv-ardupilot/...` while the prompt
+showed `(rocket)` → environments mixed (see §8 #7). Asked the user to run `which python` (and `deactivate` if it's the venv).
+
+**3.5h file `step3_rocket/step3_5h_real_rocket.py`:** same physics as 3.5g, only NUMBERS change — Falcon 9 FT-like
+(approximate public data): m0 = 549,000 kg; fuel 395,700 kg; dry_mass = m0 − fuel = 153,300 (empty S1 + full S2 + payload);
+9 × Merlin 1D: thrust_vac_1 = 914 kN, isp_vac = 311 s → ve_vac = 3050 m/s, Ae_1 = 0.681 m² (from 914 vs 845 kN SL);
+mdot = 8,226,000/3050 ≈ 2697 kg/s; radius 1.85 m → A ≈ 10.75 m²; same drag table. Prints before flight:
+liftoff thrust 7605 kN (= 9 × 845 ✓), T/W 1.41; burn rate 2697 kg/s, burn time 146.7 s (real ≈ 162 s: throttling);
+mass per front area: toy 5093 vs F9 51,060 kg/m² (10×). Then Max Q, burnout, top; plots height and q.
+Hand estimate (ROUGH): Max Q ≈ 33 kPa at ≈ 60 s, ≈ 10.5 km, Mach ≈ 1.4 (real F9 ≈ 30–35 kPa ~ 70 s ~ 12 km ✓);
+losses: gravity ≈ 1441 m/s (!), sea-level thrust ≈ 60 m/s, drag only ≈ 35 m/s; vacuum Δv 3891 → burnout ≈ 2350 m/s at ≈ 111 km
+(t = 147 s); top ≈ 390 km at ≈ 385 s (constant g → real would be higher).
+Lesson: big rocket = 10× more mass per area → drag barely matters; GRAVITY is the big enemy, and straight up gives no
+sideways speed (orbit needs 7.7 km/s sideways) → real rockets tilt over → motivates 3.6 gravity turn.
+Experiment: `Cd = 0` (both loops) → top only ≈ +10 km (toy rocket: +70 km).
+User: "I am not able to understand isp_vac" → explained: name = Isp + vac; Isp = engine's fuel-efficiency score (like car km/L
+or drone minutes per battery); it is just ve in another unit (ve = Isp × 9.81; toy 1500 ↔ 153 s; F9 3050 ↔ 311 s); why
+"seconds": 1 kg of fuel can hold up 1 kg (9.81 N) for Isp seconds (3050/9.81 = 311); engineers use it because it's the same
+number in metric and imperial units; "vac" = measured in space (Merlin 311 vac vs 282 sea level, 3.5g rule); in the code it
+only feeds ve_vac → mdot. Table: ours 153, Merlin 1D 282/311, Raptor ~330/~350+, hydrogen engines ~450.
+User: "understood, next" → **3.5h done** (no numbers reported). 3.6 split into 3.6a/b/c (see table).
+
+**3.6a file `step3_rocket/step3_6a_round_earth.py`:** F9 numbers as 3.5h (compacted); MU, RE; start (0, RE), v = 0
+(no Earth rotation yet — Step 4.3); each slice: r, h = r − RE, speed, atmosphere, thrust − P·Ae, Cd(Mach), drag,
+NEW `g = MU / r**2`; thrust along (x/r, y/r), gravity along (−x/r, −y/r); drag `-(drag/m)*vx/speed` only `if speed > 0`
+(avoid ÷0 on the pad); phase 2 `while v_up > 0` with `v_up = (vx*x + vy*y)/r` (2.5b "away" speed). Prints engine-off,
+top, gravity at the top; plot height vs time. Euler loop kept (solve_ivp from 3.7).
+Hand estimate (ROUGH, relative to 3.5h): weaker g → gravity loss ≈ 1416 instead of 1441 → engine off ≈ 112 km, ≈ 2375 m/s;
+top via energy (½v² − MU/r) ≈ 420–430 km (≈ +30 km vs 3.5h) at ≈ 405 s; g at top ≈ 8.6 m/s².
+Experiment: `g = 9.82` in BOTH loops → reproduces the user's 3.5h numbers (regression test: new code = old code when
+the new physics is switched off) — real-life verification practice.
+User: "done next" → **3.6a done** (no numbers).
+
+**3.6b file `step3_rocket/step3_6b_tilt.py`:** 3.6a + `tilt_start = 10.0`, `tilt_deg = 5.0`; NEW thrust direction:
+`tilt = 0` if t < 10 else `math.radians(tilt_deg)`; up = (x/r, y/r); sideways/east = (y/r, −x/r) (⟂ to up, +x at the top);
+`dir = cos(tilt)·up + sin(tilt)·side`; ax = (thrust/m)·dir_x − g·x/r. New Python: `math.radians`, `math.cos/sin`,
+`str()` in the title. Prints at engine off: height, v_up = (vx·x+vy·y)/r, v_side = (vx·y − vy·x)/r, orbit speed √(MU/r);
+top: height + downrange x. Plot: PATH (x km vs height km).
+Hand estimate (ROUGH): engine off ≈ 111 km, up ≈ 2360, sideways ≈ 320 m/s (≈ sin5° × ~3700), orbit needs ≈ 7840;
+top ≈ 415 km, downrange ≈ 95 km. Lesson: tilt splits thrust (cos = up part, sin = sideways part); sideways speed is what
+orbit needs, but 320 ≪ 7840 → need much more tilt, but tilting too early/much in thick air is bad → gravity turn (3.6c).
+Experiment: tilt_deg = 10 → sideways ≈ 640 m/s, top lower (≈ 400 km), downrange ≈ 190 km (rough).
+Don't suggest big tilts like 45° with fixed angle (near-zero climb, ugly; not tested by hand).
+User asked "what is the next step, what all is left?" → gave the remaining list (≈ 20 mini-steps; 29 done):
+Step 3: 3.6b tilt (current, file given) → 3.6c gravity turn → 3.7 ascent with solve_ivp + events (first stage ends like a
+real F9 MECO ≈ 70 km, ≈ 2 km/s; honest: one stage CAN'T reach orbit). PROPOSED Step 4 reorder (orbit first, then globe
+details): 4.1 stage separation (2 objects) → 4.2 second-stage burn → payload in ORBIT → 4.3 3D → 4.4 launch site lat/long →
+4.5 rotating Earth + launch time → 4.6 countdown. Step 5: 5.1 booster alone → 5.2 boostback → 5.3 entry burn/reentry →
+5.4 landing burn (1D) → 5.5 G-FOLD guidance → 5.6 full return. Step 6: 6.1 save to file → 6.2 Cesium globe + site →
+6.3 timeline playback → 6.4 plots → 6.5 Monte Carlo. Waiting for user to accept the reorder (or not) and run 3.6b.
 
 ---
 
@@ -616,6 +685,9 @@ rocket equation; then Steps 4–6 per the roadmap. Keep the same mini-step metho
    doesn't grow, and scales with dt (dt = 0.01 → ±0.04 km). The user saw it in 2.4 with `RHO0 = 0` and it
    was explained. Cure: solve_ivp (use it for reentry steps). The user's 2.4 file may still have
    `RHO0 = 0` and/or `dt = 0.01` — they were told to restore 1.225 and 0.1.
+7. **Env mix-up (seen 2026-11-19):** running `python` with `(rocket)` active loaded matplotlib from
+   `/home/shivraj/venv-ardupilot/lib/python3.12/site-packages` (warning "Unable to import Axes3D"). Either the ArduPilot
+   venv is also active (fix: `deactivate`) or `PYTHONPATH` points into it. Waiting for the user's `which python` output.
 
 ---
 
